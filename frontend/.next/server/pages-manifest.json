@@ -1,7 +1,1 @@
-{
-  "/_app": "pages/_app.js",
-  "/_error": "pages/_error.js",
-  "/_document": "pages/_document.js",
-  "/": "pages/index.js",
-  "/submit": "pages/submit.js"
-}
+{"/_app":"pages/_app.js","/":"pages/index.html","/_document":"pages/_document.js","/r/[subreddit]":"pages/r/[subreddit].html","/submit":"pages/submit.html","/post/[id]":"pages/post/[id].html","/register":"pages/register.html","/create-community":"pages/create-community.html","/_error":"pages/_error.js","/404":"pages/404.html"}
