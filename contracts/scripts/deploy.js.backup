@@ -1,0 +1,196 @@
+const hre = require("hardhat");
+
+/**
+ * @title Bread-it Protocol Deployment Script
+ * @notice Deploys all contracts and configures permissions
+ * @dev Run with: npx hardhat run scripts/deploy.js --network monadTestnet
+ * 
+ * Prerequisites:
+ * - Set PRIVATE_KEY in .env file
+ * - Ensure account has testnet MON from https://faucet.monad.xyz
+ * - Monad Testnet RPC: https://testnet-rpc.monad.xyz
+ * - Explorer: https://testnet.monadvision.com
+ */
+async function main() {
+  console.log("🍞 Deploying Bread-it Protocol to", hre.network.name);
+  console.log("=".repeat(60));
+
+  const [deployer] = await hre.ethers.getSigners();
+  console.log("Deploying with account:", deployer.address);
+  console.log("Account balance:", (await hre.ethers.provider.getBalance(deployer.address)).toString());
+  console.log();
+
+  // ═══════════════════════════════════════════════════════════
+  // STEP 1: Deploy UserRegistry
+  // ═══════════════════════════════════════════════════════════
+  console.log("1️⃣  Deploying UserRegistry...");
+  const UserRegistry = await hre.ethers.getContractFactory("UserRegistry");
+  const userRegistry = await UserRegistry.deploy();
+  await userRegistry.waitForDeployment();
+  const userRegistryAddress = await userRegistry.getAddress();
+  console.log("   UserRegistry deployed to:", userRegistryAddress);
+
+  // ═══════════════════════════════════════════════════════════
+  // STEP 2: Deploy SubredditDAO
+  // ═══════════════════════════════════════════════════════════
+  console.log("2️⃣  Deploying SubredditDAO...");
+  const protocolTreasury = deployer.address; // Use deployer as treasury for now
+  const SubredditDAO = await hre.ethers.getContractFactory("SubredditDAO");
+  const subredditDAO = await SubredditDAO.deploy(userRegistryAddress, protocolTreasury);
+  await subredditDAO.waitForDeployment();
+  const subredditDAOAddress = await subredditDAO.getAddress();
+  console.log("   SubredditDAO deployed to:", subredditDAOAddress);
+
+  // ═══════════════════════════════════════════════════════════
+  // STEP 3: Deploy PostManager
+  // ═══════════════════════════════════════════════════════════
+  console.log("3️⃣  Deploying PostManager...");
+  const PostManager = await hre.ethers.getContractFactory("PostManager");
+  const postManager = await PostManager.deploy(userRegistryAddress, subredditDAOAddress);
+  await postManager.waitForDeployment();
+  const postManagerAddress = await postManager.getAddress();
+  console.log("   PostManager deployed to:", postManagerAddress);
+
+  // ═══════════════════════════════════════════════════════════
+  // STEP 4: Deploy Voting
+  // ═══════════════════════════════════════════════════════════
+  console.log("4️⃣  Deploying Voting...");
+  const Voting = await hre.ethers.getContractFactory("Voting");
+  const voting = await Voting.deploy(userRegistryAddress);
+  await voting.waitForDeployment();
+  const votingAddress = await voting.getAddress();
+  console.log("   Voting deployed to:", votingAddress);
+
+  // ═══════════════════════════════════════════════════════════
+  // STEP 5: Deploy Governance
+  // ═══════════════════════════════════════════════════════════
+  console.log("5️⃣  Deploying Governance...");
+  const Governance = await hre.ethers.getContractFactory("Governance");
+  const governance = await Governance.deploy(userRegistryAddress);
+  await governance.waitForDeployment();
+  const governanceAddress = await governance.getAddress();
+  console.log("   Governance deployed to:", governanceAddress);
+
+  // ═══════════════════════════════════════════════════════════
+  // STEP 6: Deploy Moderation
+  // ═══════════════════════════════════════════════════════════
+  console.log("6️⃣  Deploying Moderation...");
+  const Moderation = await hre.ethers.getContractFactory("Moderation");
+  const moderation = await Moderation.deploy(userRegistryAddress);
+  await moderation.waitForDeployment();
+  const moderationAddress = await moderation.getAddress();
+  console.log("   Moderation deployed to:", moderationAddress);
+
+  console.log();
+  console.log("=".repeat(60));
+  console.log("⚙️  Configuring contract permissions...");
+  console.log("=".repeat(60));
+
+  // ═══════════════════════════════════════════════════════════
+  // STEP 7: Configure Permissions
+  // ═══════════════════════════════════════════════════════════
+
+  // UserRegistry: Grant roles to PostManager, Voting, Moderation
+  console.log("   Setting up UserRegistry permissions...");
+  await userRegistry.addKarmaManager(votingAddress);
+  await userRegistry.addKarmaManager(moderationAddress);
+  await userRegistry.addActivityRecorder(postManagerAddress);
+
+  // SubredditDAO: Grant roles to Governance and PostManager
+  console.log("   Setting up SubredditDAO permissions...");
+  await subredditDAO.setGovernance(governanceAddress);
+  await subredditDAO.setPostManager(postManagerAddress);
+
+  // PostManager: Grant roles to Voting and Moderation
+  console.log("   Setting up PostManager permissions...");
+  await postManager.setVotingContract(votingAddress);
+  await postManager.setModerationContract(moderationAddress);
+
+  // Voting: Set dependencies
+  console.log("   Setting up Voting dependencies...");
+  await voting.setPostManager(postManagerAddress);
+  await voting.setSubredditDAO(subredditDAOAddress);
+  await voting.setModerationContract(moderationAddress);
+
+  // Governance: Set dependencies
+  console.log("   Setting up Governance dependencies...");
+  await governance.setSubredditDAO(subredditDAOAddress);
+
+  // Moderation: Set dependencies
+  console.log("   Setting up Moderation dependencies...");
+  await moderation.setPostManager(postManagerAddress);
+  await moderation.setSubredditDAO(subredditDAOAddress);
+  await moderation.setVoting(votingAddress);
+
+  console.log();
+  console.log("=".repeat(60));
+  console.log("✅ Deployment Complete!");
+  console.log("=".repeat(60));
+  console.log();
+  console.log("📋 Contract Addresses:");
+  console.log("-".repeat(60));
+  console.log(`   UserRegistry:  ${userRegistryAddress}`);
+  console.log(`   SubredditDAO:  ${subredditDAOAddress}`);
+  console.log(`   PostManager:   ${postManagerAddress}`);
+  console.log(`   Voting:        ${votingAddress}`);
+  console.log(`   Governance:    ${governanceAddress}`);
+  console.log(`   Moderation:    ${moderationAddress}`);
+  console.log();
+  
+  // Export addresses for frontend
+  const addresses = {
+    network: hre.network.name,
+    chainId: hre.network.config.chainId,
+    deployer: deployer.address,
+    contracts: {
+      UserRegistry: userRegistryAddress,
+      SubredditDAO: subredditDAOAddress,
+      PostManager: postManagerAddress,
+      Voting: votingAddress,
+      Governance: governanceAddress,
+      Moderation: moderationAddress,
+    },
+    deployedAt: new Date().toISOString(),
+  };
+
+  // Save to file
+  const fs = require("fs");
+  const path = require("path");
+  
+  const deploymentsDir = path.join(__dirname, "..", "deployments");
+  if (!fs.existsSync(deploymentsDir)) {
+    fs.mkdirSync(deploymentsDir, { recursive: true });
+  }
+  
+  const filename = `${hre.network.name}-${Date.now()}.json`;
+  fs.writeFileSync(
+    path.join(deploymentsDir, filename),
+    JSON.stringify(addresses, null, 2)
+  );
+  
+  // Also save as latest
+  fs.writeFileSync(
+    path.join(deploymentsDir, `${hre.network.name}-latest.json`),
+    JSON.stringify(addresses, null, 2)
+  );
+  
+  console.log(`📁 Deployment info saved to: deployments/${filename}`);
+  console.log();
+  console.log("🚀 Next steps:");
+  console.log("   1. Copy contract addresses to frontend config");
+  console.log("   2. View on MonadVision: https://testnet.monadvision.com");
+  console.log("   3. Verify contracts (see DEPLOYMENT.md for instructions)");
+  console.log("   4. Test basic functionality");
+  console.log();
+  console.log("💡 Get testnet MON: https://faucet.monad.xyz");
+  console.log();
+
+  return addresses;
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("❌ Deployment failed:", error);
+    process.exit(1);
+  });

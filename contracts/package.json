@@ -1,0 +1,40 @@
+{
+  "name": "bread-it-contracts",
+  "version": "1.0.0",
+  "description": "Decentralized Reddit-like social platform smart contracts for Monad Testnet",
+  "author": "Bread-it Team",
+  "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile",
+    "clean": "hardhat clean",
+    "test": "hardhat test",
+    "test:coverage": "hardhat coverage",
+    "test:gas": "REPORT_GAS=true hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat ignition deploy ignition/modules/BreadIt.js --network localhost",
+    "deploy:monad": "hardhat ignition deploy ignition/modules/BreadIt.js --network monadTestnet",
+    "deploy:monad:reset": "hardhat ignition deploy ignition/modules/BreadIt.js --network monadTestnet --reset",
+    "verify": "hardhat verify --network monadTestnet"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.1",
+    "hardhat": "^2.22.15",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "solidity",
+    "ethereum",
+    "smart-contracts",
+    "monad",
+    "monad-testnet",
+    "hardhat",
+    "decentralized",
+    "social-media",
+    "reddit",
+    "dao"
+  ]
+}
